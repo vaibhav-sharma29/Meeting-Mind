@@ -16,6 +16,7 @@ from agents.analyzer import analyze_meeting
 from agents.action_taker import take_actions
 from agents.transcriber import transcribe_audio
 from agents.orchestrator import decision_node
+from live_insights import extract_live_data, generate_chart_config, should_generate_chart
 from database import get_all_meetings, get_meeting_by_id, save_meeting
 from pdf_export import generate_meeting_pdf
 from zoom_service import (
@@ -284,3 +285,26 @@ def health():
         "slack_configured": bool(os.getenv("SLACK_BOT_TOKEN")),
         "groq_configured": bool(os.getenv("GROQ_API_KEY")),
     }
+
+@app.post("/live-insight")
+async def process_live_text(request: dict):
+    """Process live meeting text for instant insights."""
+    text = request.get("text", "")
+    
+    if should_generate_chart(text):
+        live_data = extract_live_data(text)
+        if live_data:
+            chart_config = generate_chart_config(live_data)
+            if chart_config:
+                await broadcast({
+                    "step": "live_insight",
+                    "status": "chart", 
+                    "message": "📈 Live insight generated",
+                    "data": {
+                        "chart": chart_config,
+                        "text": text
+                    }
+                })
+                return JSONResponse({"success": True, "chart": chart_config})
+    
+    return JSONResponse({"success": False, "message": "No insights found"})
