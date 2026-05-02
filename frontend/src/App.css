@@ -152,6 +152,7 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .meeting-id-badge { background: #312e81; color: #a5b4fc; padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
 .pdf-download-btn { padding: 8px 18px; font-size: 0.9rem; background: linear-gradient(135deg, #059669, #10b981); }
 .copy-btn { padding: 6px 14px; font-size: 0.82rem; background: #1e1e3a; border: 1px solid #4f46e5; color: #a5b4fc; }
+.play-btn { padding: 8px 18px; font-size: 0.9rem; background: linear-gradient(135deg, #7c3aed, #a855f7); }
 
 /* ── Transcript ── */
 .transcript-card summary { cursor: pointer; color: #a5b4fc; font-weight: 600; list-style: none; }

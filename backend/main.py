@@ -15,10 +15,9 @@ from fastapi.responses import JSONResponse, Response
 from agents.analyzer import analyze_meeting
 from agents.action_taker import take_actions
 from agents.transcriber import transcribe_audio
-from agents.orchestrator import decision_node
-from live_insights import extract_live_data, generate_chart_config, should_generate_chart
 from database import get_all_meetings, get_meeting_by_id, save_meeting
 from pdf_export import generate_meeting_pdf
+from voice_service import generate_meeting_briefing
 from zoom_service import (
     download_audio_recording,
     download_transcript,
@@ -70,43 +69,31 @@ async def run_pipeline(transcript: str, source: str = "upload") -> dict:
     result = analyze_meeting(transcript)
     action_items = result.get("action_items", [])
     summary = result.get("summary", "")
-    sentiment = result.get("sentiment", "neutral")
-    risks = result.get("risks", [])
-    effectiveness_score = result.get("effectiveness_score", 5)
-    effectiveness_reason = result.get("effectiveness_reason", "")
-    repeated_misses = result.get("repeated_misses", [])
     await broadcast({
         "step": "analyzer", "status": "done",
-        "message": f"✅ Found {len(action_items)} action items! Sentiment: {sentiment}",
-        "data": result,
+        "message": f"✅ Found {len(action_items)} action items!",
     })
-
-    # Smart decision agent
-    decision_result = decision_node({
-        "action_items": action_items,
-        "risks": risks,
-        "effectiveness_score": effectiveness_score,
-        "sentiment": sentiment,
-    })
-    action_items = decision_result.get("action_items", action_items)
-    agent_decisions = decision_result.get("agent_decisions", [])
-    for d in agent_decisions:
-        await broadcast({"step": "analyzer", "status": "running", "message": d})
 
     await broadcast({"step": "action_taker", "status": "running", "message": "⚡ Sending to Slack + Calendar..."})
     actions = take_actions(action_items)
-    await broadcast({"step": "action_taker", "status": "done", "message": "✅ All done!", "data": actions})
+    await broadcast({"step": "action_taker", "status": "done", "message": "✅ All done!"})
 
     meeting = save_meeting(transcript, summary, action_items, actions, source=source)
+
+    # ElevenLabs voice briefing
+    try:
+        audio_bytes = generate_meeting_briefing(summary, action_items)
+        if audio_bytes:
+            os.makedirs("generated_files", exist_ok=True)
+            with open(f"generated_files/voice_{meeting['id']}.mp3", "wb") as f:
+                f.write(audio_bytes)
+            await broadcast({"step": "voice", "status": "done", "message": "🎙️ Voice briefing ready!"})
+    except Exception as e:
+        logger.warning(f"Voice briefing error: {e}")
+
     return {
         "meeting": meeting,
         "summary": summary,
-        "sentiment": sentiment,
-        "risks": risks,
-        "effectiveness_score": effectiveness_score,
-        "effectiveness_reason": effectiveness_reason,
-        "repeated_misses": repeated_misses,
-        "agent_decisions": agent_decisions,
         "action_items": action_items,
         "actions_taken": actions,
     }
@@ -134,12 +121,6 @@ async def process_meeting(audio: UploadFile = File(...)):
             "meeting_id": meeting["id"],
             "transcript": transcript,
             "summary": pipeline["summary"],
-            "sentiment": pipeline["sentiment"],
-            "risks": pipeline["risks"],
-            "effectiveness_score": pipeline["effectiveness_score"],
-            "effectiveness_reason": pipeline["effectiveness_reason"],
-            "repeated_misses": pipeline["repeated_misses"],
-            "agent_decisions": pipeline["agent_decisions"],
             "action_items": pipeline["action_items"],
             "actions_taken": pipeline["actions_taken"],
         })
@@ -186,6 +167,34 @@ def download_pdf(meeting_id: int):
         content=pdf_bytes,
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=meeting_{meeting_id}.pdf"},
+    )
+
+
+@app.get("/meetings/{meeting_id}/voice")
+def get_voice(meeting_id: int):
+    filepath = f"generated_files/voice_{meeting_id}.mp3"
+    if not os.path.exists(filepath):
+        return JSONResponse({"error": "Voice not found"}, status_code=404)
+    with open(filepath, "rb") as f:
+        audio_bytes = f.read()
+    return Response(
+        content=audio_bytes,
+        media_type="audio/mpeg",
+        headers={"Content-Disposition": f"inline; filename=voice_{meeting_id}.mp3"},
+    )
+
+
+@app.api_route("/meetings/{meeting_id}/voice", methods=["GET", "HEAD"])
+def download_voice(meeting_id: int, request: Request):
+    filepath = f"generated_files/voice_summary_{meeting_id}.mp3"
+    if not os.path.exists(filepath):
+        return JSONResponse({"error": "Voice summary not found"}, status_code=404)
+    with open(filepath, "rb") as f:
+        audio_bytes = f.read()
+    return Response(
+        content=audio_bytes,
+        media_type="audio/mpeg",
+        headers={"Content-Disposition": f"attachment; filename=voice_summary_{meeting_id}.mp3"},
     )
 
 
@@ -284,27 +293,5 @@ def health():
         "zoom_configured": bool(os.getenv("ZOOM_ACCOUNT_ID")),
         "slack_configured": bool(os.getenv("SLACK_BOT_TOKEN")),
         "groq_configured": bool(os.getenv("GROQ_API_KEY")),
+        "elevenlabs_configured": bool(os.getenv("ELEVENLABS_API_KEY")),
     }
-
-@app.post("/live-insight")
-async def process_live_text(request: dict):
-    """Process live meeting text for instant insights."""
-    text = request.get("text", "")
-    
-    if should_generate_chart(text):
-        live_data = extract_live_data(text)
-        if live_data:
-            chart_config = generate_chart_config(live_data)
-            if chart_config:
-                await broadcast({
-                    "step": "live_insight",
-                    "status": "chart", 
-                    "message": "📈 Live insight generated",
-                    "data": {
-                        "chart": chart_config,
-                        "text": text
-                    }
-                })
-                return JSONResponse({"success": True, "chart": chart_config})
-    
-    return JSONResponse({"success": False, "message": "No insights found"})

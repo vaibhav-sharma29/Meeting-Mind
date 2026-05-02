@@ -257,6 +257,8 @@ function sourceLabel(source = "") {
 
 function MeetingResult({ result, onDownloadPDF }) {
   const [copied, setCopied] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const audioRef = useRef(null);
 
   const copyActions = () => {
     const text = result.action_items?.map(
@@ -267,14 +269,34 @@ function MeetingResult({ result, onDownloadPDF }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const toggleBriefing = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+      setPlaying(false);
+      return;
+    }
+    const audio = new Audio(`${API}/meetings/${result.meeting_id}/voice`);
+    audioRef.current = audio;
+    audio.play();
+    setPlaying(true);
+    audio.onended = () => { setPlaying(false); audioRef.current = null; };
+    audio.onerror = () => { setPlaying(false); audioRef.current = null; };
+  };
+
   return (
     <div className="results">
       {result.meeting_id && (
         <div className="result-actions-bar">
           <span className="meeting-id-badge">Meeting #{result.meeting_id}</span>
-          <button className="pdf-download-btn" onClick={() => onDownloadPDF(result.meeting_id)}>
-            📄 Download PDF
-          </button>
+          <div style={{display:"flex", gap:"8px"}}>
+            <button className="play-btn" onClick={toggleBriefing}>
+              {playing ? "⏹ Stop" : "🎙️ Play Briefing"}
+            </button>
+            <button className="pdf-download-btn" onClick={() => onDownloadPDF(result.meeting_id)}>
+              📄 Download PDF
+            </button>
+          </div>
         </div>
       )}
 
