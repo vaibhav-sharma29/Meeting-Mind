@@ -16,3 +16,4 @@ speechrecognition
 python-multipart
 websockets
 httpx
+python-pptx
