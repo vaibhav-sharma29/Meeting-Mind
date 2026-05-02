@@ -107,11 +107,9 @@ export default function App() {
   return (
     <div className="app">
       <div className="header">
-        <h1>🤖 MeetingMind AI</h1>
+        <h1>MeetingMind <span className="ai-badge">AI</span></h1>
         <p>Autonomous Meeting Agent — Listens, Understands, Acts</p>
-        <div className={`ws-badge ws-${wsStatus}`}>
-          {wsStatus === "connected" ? "🟢 Live" : wsStatus === "connecting" ? "🟡 Connecting..." : "🔴 Disconnected"}
-        </div>
+        <div className={`status-dot ${wsStatus}`}></div>
       </div>
 
       {/* Main Tabs */}
