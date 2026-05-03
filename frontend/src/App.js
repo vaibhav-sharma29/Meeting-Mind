@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import "./App.css";
 
-const API = "http://localhost:8000";
+const API = process.env.REACT_APP_API_URL || "https://meeting-mind-production-1369.up.railway.app";
 
 const AGENTS = [
   { id: "transcriber", label: "Transcriber Agent", emoji: "🎤", desc: "Converting speech to text" },
@@ -28,8 +28,8 @@ export default function App() {
 
   // ── WebSocket ──────────────────────────────────────────────────────────────
   const connectWS = useCallback(() => {
-    const ws = new WebSocket("ws://localhost:8000/ws");
-    ws.onopen  = () => setWsStatus("connected");
+    const wsUrl = API.replace("https", "wss").replace("http", "ws") + "/ws";
+    const ws = new WebSocket(wsUrl);
     ws.onclose = () => { setWsStatus("disconnected"); setTimeout(connectWS, 3000); };
     ws.onerror = () => setWsStatus("error");
     ws.onmessage = (e) => {
