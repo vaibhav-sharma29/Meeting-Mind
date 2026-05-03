@@ -1,20 +1,17 @@
 import os
+import io
 import logging
-from elevenlabs import ElevenLabs
+from gtts import gTTS
 from dotenv import load_dotenv
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-client = ElevenLabs(api_key=os.getenv("ELEVENLABS_API_KEY"))
-
-# Free premade voice - Sarah (clear, professional)
-VOICE_ID = "EXAVITQu4vr4xnSDxMaL"
 
 def generate_meeting_briefing(summary: str, action_items: list) -> bytes | None:
-    """Generate full meeting audio briefing."""
+    """Generate full meeting audio briefing using gTTS."""
     try:
-        lines = ["Meeting Mind AI — Meeting Briefing."]
+        lines = ["MeetingMind AI — Meeting Briefing."]
         lines.append(f"Summary: {summary}")
 
         if action_items:
@@ -35,16 +32,17 @@ def generate_meeting_briefing(summary: str, action_items: list) -> bytes | None:
         lines.append("End of briefing. Have a productive day!")
         script = " ".join(lines)
 
-        audio = client.text_to_speech.convert(
-            voice_id=VOICE_ID,
-            text=script,
-            model_id="eleven_multilingual_v2",
-            output_format="mp3_44100_128",
-        )
-        audio_bytes = b"".join(audio)
-        logger.info(f"✅ Briefing generated: {len(audio_bytes)} bytes")
+        # Detect language - use Hindi if Hindi text present
+        lang = "hi" if any(ord(c) > 2304 and ord(c) < 2432 for c in script) else "en"
+
+        buf = io.BytesIO()
+        tts = gTTS(text=script, lang=lang, slow=False)
+        tts.write_to_fp(buf)
+        audio_bytes = buf.getvalue()
+
+        logger.info(f"✅ Voice briefing generated: {len(audio_bytes)} bytes")
         return audio_bytes
 
     except Exception as e:
-        logger.error(f"ElevenLabs briefing error: {e}")
+        logger.error(f"gTTS briefing error: {e}")
         return None

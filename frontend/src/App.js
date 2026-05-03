@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import axios from "axios";
 import "./App.css";
 
-const API = process.env.REACT_APP_API_URL || "https://meeting-mind-production-2896.up.railway.app";
+const API = process.env.REACT_APP_API_URL || "http://localhost:8000";
 
 const AGENTS = [
   { id: "transcriber", label: "Transcriber Agent", emoji: "🎤", desc: "Converting speech to text" },

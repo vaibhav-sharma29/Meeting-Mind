@@ -1,6 +1,7 @@
 fastapi
 groq
 elevenlabs
+gtts
 uvicorn
 python-dotenv
 google-generativeai
@@ -18,3 +19,4 @@ httpx
 matplotlib
 numpy
 requests
+python-pptx
