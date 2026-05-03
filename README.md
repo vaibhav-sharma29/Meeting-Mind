@@ -1,84 +1,120 @@
-# 🤖 MeetingMind AI
+# 🧠 MeetingMind AI
 
-Agentic AI system jo Zoom meetings ko automatically process karta hai — recording aate hi transcribe, analyze, Slack notify, aur Calendar event create karta hai.
+**Autonomous Meeting Agent — Listens, Understands, Acts**
 
-## How It Works
+> Built for Hackathon | Powered by Groq + LangGraph + ElevenLabs + Slack + Notion
+
+---
+
+## 🎬 Demo Video
+
+https://github.com/vaibhav-sharma29/Meeting-Mind/raw/main/assets/demo.mp4
+
+---
+
+## 🚀 What is MeetingMind?
+
+MeetingMind is an AI-powered autonomous agent that automatically processes meetings end-to-end. Upload a recording or connect Zoom — MeetingMind handles everything else.
+
+---
+
+## ✨ Features
+
+| Feature | Status |
+|---------|--------|
+| 🎤 Audio transcription (Hindi/English/Hinglish) | ✅ |
+| 🧠 AI meeting analysis + action items | ✅ |
+| 📞 Zoom webhook auto-processing | ✅ |
+| 💬 Slack notifications per assignee | ✅ |
+| 📅 Google Calendar event creation | ✅ |
+| 📓 Notion meeting page auto-created | ✅ |
+| 📊 Auto PPT generation + Slack upload | ✅ |
+| 🎙️ Voice briefing (audio summary) | ✅ |
+| 📄 PDF report export | ✅ |
+| 🔴 Real-time agent status (WebSocket) | ✅ |
+| 👥 Admin + Team viewer roles | ✅ |
+
+---
+
+## 🔄 How It Works
 
 ```
-Zoom Meeting Ends
-      ↓
-Zoom Webhook → MeetingMind Backend
-      ↓
-[Agent 1] Transcriber  — VTT transcript ya audio download + Gemini transcription
-      ↓
-[Agent 2] Analyzer     — Gemini AI se summary + action items extract
-      ↓
-[Agent 3] Action Taker — Slack notification + Google Calendar events
-      ↓
-History saved + PDF export available
+Audio Upload / Zoom Recording
+        ↓
+🎤 Transcriber Agent (Groq Whisper)
+        ↓
+🧠 Analyzer Agent (Groq LLaMA 3.3 70B)
+        ↓
+⚡ Action Taker Agent
+   ├── 💬 Slack notification
+   ├── 📅 Google Calendar event
+   ├── 📊 PPT generation + Slack upload
+   └── 📓 Notion page
+        ↓
+🎙️ Voice Briefing (gTTS)
+📄 PDF Report
 ```
 
-## Setup
+---
 
-### 1. Backend
+## 🛠️ Tech Stack
 
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React.js |
+| Backend | FastAPI + Python |
+| Transcription | Groq Whisper |
+| AI Analysis | Groq LLaMA 3.3 70B |
+| Orchestration | LangGraph |
+| Voice | gTTS |
+| Notifications | Slack SDK |
+| Calendar | Google Calendar API |
+| Presentations | python-pptx + Groq AI |
+| Notes | Notion API |
+| Deployment | Railway + Vercel |
+
+---
+
+## 🌐 Live Demo
+
+- **Team View:** https://meeting-mind-six.vercel.app
+- **Admin View:** https://meeting-mind-six.vercel.app?admin=meetingmind2024
+
+---
+
+## ⚙️ Setup
+
+### Backend
 ```bash
 cd backend
 pip install -r requirements.txt
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Fill in `.env`:
-```
-GEMINI_API_KEY=...
-SLACK_BOT_TOKEN=xoxb-...
-SLACK_CHANNEL_ID=C...
-ZOOM_WEBHOOK_SECRET=...
-ZOOM_ACCOUNT_ID=...
-ZOOM_CLIENT_ID=...
-ZOOM_CLIENT_SECRET=...
-```
-
-Run:
-```bash
-uvicorn main:app --reload
-```
-
-### 2. Frontend
-
+### Frontend
 ```bash
 cd frontend
 npm install
 npm start
 ```
 
-### 3. Zoom Webhook Setup
+### Environment Variables (.env)
+```
+GROQ_API_KEY=...
+SLACK_BOT_TOKEN=...
+SLACK_CHANNEL_ID=...
+NOTION_TOKEN=...
+NOTION_DATABASE_ID=...
+ZOOM_WEBHOOK_SECRET=...
+ZOOM_ACCOUNT_ID=...
+ZOOM_CLIENT_ID=...
+ZOOM_CLIENT_SECRET=...
+ELEVENLABS_API_KEY=...
+```
 
-1. Go to [Zoom Marketplace](https://marketplace.zoom.us) → Your App → Feature → Event Subscriptions
-2. Add webhook URL: `https://your-domain.com/zoom-webhook`
-3. Subscribe to events:
-   - `meeting.ended`
-   - `recording.completed`
-4. Copy Webhook Secret Token → paste in `.env` as `ZOOM_WEBHOOK_SECRET`
+---
 
-> For local testing use [ngrok](https://ngrok.com): `ngrok http 8000`
+## 👥 Access Levels
 
-### 4. Google Calendar
-
-First time run karne pe browser mein OAuth popup aayega — allow kar do. `token.pickle` save ho jaayega.
-
-## Features
-
-| Feature | Status |
-|---------|--------|
-| Zoom webhook auto-processing | ✅ |
-| VTT transcript download | ✅ |
-| Audio recording download + Gemini transcription | ✅ |
-| Manual audio file upload (.wav/.mp3/.m4a/.mp4) | ✅ |
-| Browser mic recording | ✅ |
-| Gemini AI meeting analysis | ✅ |
-| Slack notifications per action item | ✅ |
-| Google Calendar event creation | ✅ |
-| Meeting history (JSON) | ✅ |
-| PDF report export | ✅ |
-| Real-time agent status (WebSocket) | ✅ |
-| Copy action items to clipboard | ✅ |
+- **Admin** `?admin=meetingmind2024` — Upload, history, PDF, all actions
+- **Team** — Summary + action items only
