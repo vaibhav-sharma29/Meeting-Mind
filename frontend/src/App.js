@@ -156,7 +156,7 @@ export default function App() {
                 </ol>
                 <div className="zoom-status-box">
                   <span>Webhook endpoint:</span>
-                  <code>POST {window.location.protocol}{'//'}{ window.location.hostname}:8000/zoom-webhook</code>
+                  <code>POST https://meeting-mind-production-1369.up.railway.app/zoom-webhook</code>
                 </div>
                 <p className="muted">Configure this URL in your Zoom App → Feature → Event Subscriptions.</p>
               </div>
