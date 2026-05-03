@@ -18,6 +18,7 @@ from agents.transcriber import transcribe_audio
 from database import get_all_meetings, get_meeting_by_id, save_meeting
 from pdf_export import generate_meeting_pdf
 from voice_service import generate_meeting_briefing
+from notion_service import create_notion_meeting_page
 from zoom_service import (
     download_audio_recording,
     download_transcript,
@@ -79,6 +80,14 @@ async def run_pipeline(transcript: str, source: str = "upload") -> dict:
     await broadcast({"step": "action_taker", "status": "done", "message": "✅ All done!"})
 
     meeting = save_meeting(transcript, summary, action_items, actions, source=source)
+
+    # Notion — create meeting page
+    try:
+        notion_ok = create_notion_meeting_page(summary, action_items, source)
+        if notion_ok:
+            await broadcast({"step": "action_taker", "status": "done", "message": "📓 Notion page created!"})
+    except Exception as e:
+        logger.warning(f"Notion error: {e}")
 
     # ElevenLabs voice briefing
     try:

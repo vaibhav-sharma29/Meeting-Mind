@@ -31,16 +31,17 @@ def take_actions(action_items: list) -> list:
         slack_ok = send_slack_message(assignee, task, deadline, priority)
         if slack_ok:
             actions_taken.append(f"✅ Slack: Notified {assignee} — {task[:60]}")
-        else:
-            actions_taken.append(f"⚠️ Slack: Failed to notify {assignee}")
 
         # Google Calendar event
         if deadline:
-            cal_ok = create_calendar_event(assignee, task, deadline)
-            if cal_ok:
-                actions_taken.append(f"✅ Calendar: Event created for {assignee} on {deadline}")
-            else:
-                actions_taken.append(f"⚠️ Calendar: Could not create event for {assignee}")
+            try:
+                cal_ok = create_calendar_event(assignee, task, deadline)
+                if cal_ok:
+                    actions_taken.append(f"✅ Calendar: Event created for {assignee} on {deadline}")
+                else:
+                    actions_taken.append(f"⚠️ Calendar: Could not create event for {assignee}")
+            except Exception:
+                pass
 
     return actions_taken
 

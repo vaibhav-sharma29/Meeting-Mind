@@ -1,108 +1,93 @@
-"""Notion API service for task management."""
 import os
 import logging
-import httpx
-from datetime import datetime
+import requests
 from dotenv import load_dotenv
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-NOTION_TOKEN = os.getenv("NOTION_TOKEN")
-NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
-NOTION_API_URL = "https://api.notion.com/v1"
+NOTION_TOKEN = os.getenv("NOTION_TOKEN", "")
+NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID", "")
+HEADERS = {
+    "Authorization": f"Bearer {NOTION_TOKEN}",
+    "Content-Type": "application/json",
+    "Notion-Version": "2022-06-28",
+}
 
-def create_notion_task(assignee: str, task: str, deadline: str = None, priority: str = "medium", meeting_source: str = "MeetingMind") -> bool:
-    """Create a task in Notion database."""
+
+def create_notion_meeting_page(summary: str, action_items: list, source: str = "upload") -> bool:
+    """Create a meeting summary page in Notion database."""
     if not NOTION_TOKEN or not NOTION_DATABASE_ID:
-        logger.warning("Notion not configured, skipping task creation.")
+        logger.warning("Notion not configured, skipping.")
         return False
-
-    # Format deadline for Notion
-    deadline_obj = None
-    if deadline:
-        try:
-            deadline_obj = {"start": deadline}
-        except Exception:
-            pass
-
-    # Priority mapping
-    priority_map = {"high": "High", "medium": "Medium", "low": "Low"}
-    notion_priority = priority_map.get(priority.lower(), "Medium")
-
-    payload = {
-        "parent": {"database_id": NOTION_DATABASE_ID},
-        "properties": {
-            "Name": {
-                "title": [{"text": {"content": f"{assignee} - {task[:50]}"}}]
-            },
-            "Assignee": {
-                "rich_text": [{"text": {"content": assignee}}]
-            },
-            "Task": {
-                "rich_text": [{"text": {"content": task}}]
-            },
-            "Priority": {
-                "select": {"name": notion_priority}
-            },
-            "Status": {
-                "select": {"name": "To-Do"}
-            },
-            "Meeting Source": {
-                "rich_text": [{"text": {"content": meeting_source}}]
-            }
-        }
-    }
-
-    if deadline_obj:
-        payload["properties"]["Deadline"] = {"date": deadline_obj}
-
-    headers = {
-        "Authorization": f"Bearer {NOTION_TOKEN}",
-        "Content-Type": "application/json",
-        "Notion-Version": "2022-06-28"
-    }
 
     try:
-        response = httpx.post(
-            f"{NOTION_API_URL}/pages",
-            json=payload,
-            headers=headers,
-            timeout=10
-        )
-        response.raise_for_status()
-        logger.info(f"Notion task created for {assignee}: {task[:30]}")
-        return True
-    except Exception as e:
-        logger.error(f"Notion task creation failed: {e}")
-        return False
+        # Build action items text
+        actions_text = ""
+        for i, item in enumerate(action_items, 1):
+            assignee = item.get("assignee", "Team")
+            task = item.get("task", "")
+            deadline = item.get("deadline", "No deadline")
+            priority = item.get("priority", "medium").upper()
+            actions_text += f"{i}. [{priority}] {assignee}: {task} (Due: {deadline})\n"
 
-def update_task_status(task_id: str, status: str) -> bool:
-    """Update task status in Notion."""
-    if not NOTION_TOKEN:
-        return False
+        if not actions_text:
+            actions_text = "No action items identified."
 
-    payload = {
-        "properties": {
-            "Status": {"select": {"name": status}}
+        # Create Notion page
+        payload = {
+            "parent": {"database_id": NOTION_DATABASE_ID},
+            "properties": {
+                "Name": {
+                    "title": [{"text": {"content": f"Meeting Summary — {source}"}}]
+                },
+            },
+            "children": [
+                {
+                    "object": "block",
+                    "type": "heading_2",
+                    "heading_2": {
+                        "rich_text": [{"text": {"content": "📝 Summary"}}]
+                    }
+                },
+                {
+                    "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [{"text": {"content": summary or "No summary available."}}]
+                    }
+                },
+                {
+                    "object": "block",
+                    "type": "heading_2",
+                    "heading_2": {
+                        "rich_text": [{"text": {"content": "✅ Action Items"}}]
+                    }
+                },
+                {
+                    "object": "block",
+                    "type": "paragraph",
+                    "paragraph": {
+                        "rich_text": [{"text": {"content": actions_text}}]
+                    }
+                },
+            ]
         }
-    }
 
-    headers = {
-        "Authorization": f"Bearer {NOTION_TOKEN}",
-        "Content-Type": "application/json",
-        "Notion-Version": "2022-06-28"
-    }
-
-    try:
-        response = httpx.patch(
-            f"{NOTION_API_URL}/pages/{task_id}",
+        response = requests.post(
+            "https://api.notion.com/v1/pages",
+            headers=HEADERS,
             json=payload,
-            headers=headers,
             timeout=10
         )
-        response.raise_for_status()
-        return True
+
+        if response.status_code == 200:
+            logger.info("✅ Notion page created successfully")
+            return True
+        else:
+            logger.error(f"Notion error: {response.status_code} — {response.text}")
+            return False
+
     except Exception as e:
-        logger.error(f"Notion status update failed: {e}")
+        logger.error(f"Notion unexpected error: {e}")
         return False
